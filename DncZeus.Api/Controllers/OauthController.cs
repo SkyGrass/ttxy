@@ -6,7 +6,7 @@ using System.Linq;
 using System.Security.Claims;
 using DncZeus.Api.Auth;
 using static DncZeus.Api.Entities.Enums.CommonEnum;
-using ZYSoft.LYYL.Core;
+using System;
 
 namespace DncZeus.Api.Controllers
 {
@@ -23,6 +23,7 @@ namespace DncZeus.Api.Controllers
         /// 
         /// </summary>
         /// <param name="appSettings"></param>
+        /// <param name="dbContext"></param>
         public OauthController(IOptions<AppAuthenticationSettings> appSettings, DncZeusDbContext dbContext)
         {
             _appSettings = appSettings.Value;
@@ -48,7 +49,7 @@ namespace DncZeus.Api.Controllers
                     response.SetFailed("用户不存在");
                     return Ok(response);
                 }
-                if (user.Password != new CoreMethod().U8Encrypt((password ?? "").Trim()))
+                if (user.Password != U8Encrypt((password ?? "").Trim()))
                 {
                     response.SetFailed("密码不正确");
                     return Ok(response);
@@ -79,6 +80,25 @@ namespace DncZeus.Api.Controllers
 
             response.SetData(token);
             return Ok(response);
+        }
+
+        public string U8Encrypt(string input)
+        {
+            string rethash = "";
+            try
+            {
+                System.Security.Cryptography.SHA1 hash = System.Security.Cryptography.SHA1.Create();
+                System.Text.ASCIIEncoding encoder = new System.Text.ASCIIEncoding();
+                byte[] combined = encoder.GetBytes(input);
+                hash.ComputeHash(combined);
+                rethash = Convert.ToBase64String(hash.Hash);
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+            //用友密码最后一位补位 
+            return rethash + (char)3;
         }
     }
 }

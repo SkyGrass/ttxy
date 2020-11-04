@@ -881,11 +881,11 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID", queryStr));
                 }
                 if (!string.IsNullOrEmpty(payload.FBeginDate))
                 {
-                    queryStr += $"AND  FDate >='{payload.FBeginDate}'";
+                    queryStr += $"AND  FBeginDate >='{payload.FBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FEndDate))
                 {
-                    queryStr += $"AND  FDate <='{payload.FEndDate} 23:59:59 '";
+                    queryStr += $"AND  FEndDate <='{payload.FEndDate} 23:59:59 '";
                 }
 
                 var fileType = "xlsx";

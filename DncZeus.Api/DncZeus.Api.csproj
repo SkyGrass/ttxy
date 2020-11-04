@@ -67,10 +67,6 @@
     <Folder Include="wwwroot\imgs\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ZYSoft.LYYL.Core\ZYSoft.LYYL.Core.csproj" />
-  </ItemGroup>
-
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JSONSchema="" /></VisualStudio></ProjectExtensions>
 
 </Project>

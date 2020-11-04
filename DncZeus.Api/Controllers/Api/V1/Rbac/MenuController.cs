@@ -278,7 +278,7 @@ namespace DncZeus.Api.Controllers.Api.V1.Rbac
         /// <summary>
         /// 删除菜单
         /// </summary>
-        /// <param name="status">菜单状�?/param>
+        /// <param name="status">菜单状�?</param>
         /// <param name="ids">菜单ID字符�?多个以逗号隔开</param>
         /// <returns></returns>
         private ResponseModel UpdateStatus(UserStatus status, string ids)
