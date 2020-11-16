@@ -170,156 +170,6 @@ namespace DncZeus.Api.Controllers.Api.V1.Sys
             }
         }
 
-        [HttpPost]
-        public string exportExcel(BillRecordRequestPayload payload)
-        {
-            try
-            {
-                string queryStr = string.Empty;
-                if (!string.IsNullOrEmpty(payload.Kw))
-                {
-                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%')";
-                }
-
-                if (payload.FHospitalID > 0)
-                {
-                    queryStr += $"AND  FHospitalID ='{payload.FHospitalID}'";
-                }
-                if (payload.FBedID > 0)
-                {
-                    queryStr += $"AND  FBedID ='{payload.FBedID}'";
-                }
-                if (payload.FAreaID > 0)
-                {
-                    queryStr += $"AND  FAreaID ='{payload.FAreaID}'";
-                }
-                if (payload.FManagerID > 0)
-                {
-                    queryStr += $"AND  FManagerID ='{payload.FManagerID}'";
-                }
-                if (!string.IsNullOrEmpty(payload.FBeginDate))
-                {
-                    queryStr += $"AND  FDate >='{payload.FBeginDate}'";
-                }
-                if (!string.IsNullOrEmpty(payload.FEndDate))
-                {
-                    queryStr += $"AND  FDate <='{payload.FEndDate} 23:59:59' ";
-                }
-
-                var fileType = "xlsx";
-                var path = string.Format(@"{0}/excels", _hostingEnvironment.WebRootPath);
-                if (!Directory.Exists(path))
-                {
-                    Directory.CreateDirectory(path);
-                }
-                var fileName = RandomHelper.GetRandomizer(10, true, false, true, false);
-                path = string.Format(@"{0}/{1}.{2}", path, fileName, fileType);
-
-                using (_dbContext)
-                {
-                    DataTable config = _dbContext.Database.SqlQuery(string.Format(@"SELECT * FROM dbo.DncViewConfig WHERE FViewId =1
-                AND ISNULL(FIsClose,0)=0 ORDER BY FNo"));
-                    DataTable configforSummary = _dbContext.Database.SqlQuery(string.Format(@"SELECT * FROM dbo.DncViewConfig WHERE FViewId =5
-                AND ISNULL(FIsClose,0)=0 ORDER BY FNo"));
-                    string columns = string.Empty;
-                    string columnsforSummary = string.Empty;
-                    if (config != null)
-                    {
-                        foreach (DataRow dr in config.Rows)
-                        {
-                            columns += $"{dr["FColName"]} as {dr["FLabelName"]},";
-                        }
-
-                        if (columns.EndsWith(","))
-                        {
-                            columns = columns.Substring(0, columns.Length - 1);
-                        }
-                    }
-                    else
-                    {
-                        columns = "*";
-                    }
-                    if (configforSummary != null)
-                    {
-                        foreach (DataRow dr in configforSummary.Rows)
-                        {
-                            columnsforSummary += $"{dr["FColName"]} as {dr["FLabelName"]},";
-                        }
-
-                        if (columnsforSummary.EndsWith(","))
-                        {
-                            columnsforSummary = columnsforSummary.Substring(0, columnsforSummary.Length - 1);
-                        }
-                    }
-                    else
-                    {
-                        columnsforSummary = "*";
-                    }
-                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select {0} from vBillRecord where 1=1 {1}", columns, queryStr));
-                    DataTable sourceSummary = _dbContext.Database.SqlQuery(string.Format(@"select {0} from vBillRecordSummary where 1=1 {1}", columnsforSummary, queryStr));
-                    if (source != null && source.Rows.Count > 0 && sourceSummary != null && sourceSummary.Rows.Count > 0)
-                    {
-                        string errorMsg = "";
-
-                        DataSet ds = new DataSet();
-                        source.TableName = "明细记录";
-                        sourceSummary.TableName = "汇总记录";
-                        ds.Tables.Add(source);
-                        ds.Tables.Add(sourceSummary);
-                        List<int> result = new ExcelHelper(path).DataTableToExcel(ds, true, ref errorMsg);
-                        if (result.Count > 0)
-                        {
-                            var fileBase64 = ExcelHelper.File2Base64(path);
-                            if (!string.IsNullOrEmpty(fileBase64))
-                            {
-                                return JsonConvert.SerializeObject(new
-                                {
-                                    state = "success",
-                                    msg = "",
-                                    data = new
-                                    {
-                                        filename = string.Format(@"{0}.{1}", fileName, fileType),
-                                        file = fileBase64
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                return JsonConvert.SerializeObject(new
-                                {
-                                    state = "error",
-                                    msg = "文件转化失败!"
-                                });
-                            }
-                        }
-                        else
-                        {
-                            return JsonConvert.SerializeObject(new
-                            {
-                                state = "error",
-                                msg = errorMsg
-                            });
-                        }
-                    }
-                    else
-                    {
-                        return JsonConvert.SerializeObject(new
-                        {
-                            state = "error",
-                            msg = "没有查询到数据!",
-                        });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return JsonConvert.SerializeObject(new
-                {
-                    state = "error",
-                    msg = "导出数据发生异常!",
-                });
-            }
-        }
 
         public string CheckList(BillCheckRequestPayload payload)
         {
@@ -395,11 +245,11 @@ namespace DncZeus.Api.Controllers.Api.V1.Sys
                 }
                 if (!string.IsNullOrEmpty(payload.FPBeginDate))
                 {
-                    queryStr += $"AND  FEnBeginDate >='{payload.FPBeginDate}'";
+                    queryStr += $"AND  FAccountEndDate >='{payload.FPBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FPEndDate))
                 {
-                    queryStr += $"AND  FEnEndDate <='{payload.FPEndDate} 23:59:59 '";
+                    queryStr += $"AND  FAccountEndDate <='{payload.FPEndDate} 23:59:59 '";
                 }
                 if (payload.FIsFinish > CommonEnum.IsFinish.All)
                 {
@@ -484,7 +334,7 @@ namespace DncZeus.Api.Controllers.Api.V1.Sys
                 string queryStr = string.Empty;
                 if (!string.IsNullOrEmpty(payload.Kw))
                 {
-                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%')";
+                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%' or FPcName like '%{payload.Kw}%')";
                 }
 
                 if (payload.FHospitalID > 0)
@@ -505,11 +355,11 @@ namespace DncZeus.Api.Controllers.Api.V1.Sys
                 }
                 if (!string.IsNullOrEmpty(payload.FBeginDate))
                 {
-                    queryStr += $"AND  FBeginDate >='{payload.FBeginDate}'";
+                    queryStr += $"AND  FAccountEndDate >='{payload.FBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FEndDate))
                 {
-                    queryStr += $"AND  FEndDate <='{payload.FEndDate} 23:59:59 '";
+                    queryStr += $"AND  FAccountEndDate <='{payload.FEndDate} 23:59:59 '";
                 }
                 using (_dbContext)
                 {
@@ -688,15 +538,32 @@ from(select ROW_NUMBER() OVER(ORDER BY fid desc) as counts from vFeeRecord
                 }
                 if (!string.IsNullOrEmpty(payload.FBeginDate))
                 {
-                    queryStr += $"AND  t2.FBeginDate >='{payload.FBeginDate}'";
+                    queryStr += $"AND  t2.FAccountEndDate >='{payload.FBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FEndDate))
                 {
-                    queryStr += $"AND t2.FEndDate <='{payload.FEndDate} 23:59:59 '";
+                    queryStr += $"AND t2.FAccountEndDate <='{payload.FEndDate} 23:59:59 '";
                 }
                 using (_dbContext)
                 {
-                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@" SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
+                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"
+SELECT ISNULL(SUM(t.FHospitalMgrCost),0)FHospitalMgrCost,ISNULL(SUM(t.FCompanyMgrCost),0)FCompanyMgrCost,
+ISNULL(SUM(t.FPersonCost),0)FPersonCost,ISNULL(SUM(t.FHolidayCost),0)FHolidayCost,
+ISNULL(SUM(t.FTotalPersonCost),0)FTotalPersonCost,'' FHospitalName,'' FPcName,'合计'FPcCode,ISNULL(SUM(t.FDay),0)FDay,
+ISNULL(SUM(t.FCost),0)FCost,'' FPersonID FROM (SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
+                SUM(ISNULL(t2.FCompanyMgrCost, 0)) AS FCompanyMgrCost, SUM(ISNULL(t2.FPersonCost, 0)) 
+                AS FPersonCost, SUM(ISNULL(t2.FHolidayCost, 0)) AS FHolidayCost, 
+                SUM(ISNULL(t2.FTotalPersonCost, 0)) AS FTotalPersonCost, t3.Name AS FHospitalName, 
+                t4.Name AS FPcName, t4.Code AS FPcCode, SUM(ISNULL(t2.FDay, 0)) AS FDay, 
+                SUM(ISNULL(t2.FCost, 0)) AS FCost, t2.FPersonID
+FROM   dbo.t_Bill AS t1 LEFT OUTER JOIN
+                dbo.t_BillDetail AS t2 ON t1.FID = t2.FID LEFT OUTER JOIN
+                dbo.DncHospital AS t3 ON t1.FHospitalID = t3.Id LEFT OUTER JOIN
+                dbo.DncPc AS t4 ON t2.FPersonID = t4.Id WHERE 1=1  {0}
+GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID
+) AS t
+union all
+SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
                 SUM(ISNULL(t2.FCompanyMgrCost, 0)) AS FCompanyMgrCost, SUM(ISNULL(t2.FPersonCost, 0)) 
                 AS FPersonCost, SUM(ISNULL(t2.FHolidayCost, 0)) AS FHolidayCost, 
                 SUM(ISNULL(t2.FTotalPersonCost, 0)) AS FTotalPersonCost, t3.Name AS FHospitalName, 
@@ -723,6 +590,223 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID", queryStr));
                 {
                     state = "error",
                     msg = "查询数据发生异常!",
+                });
+            }
+        }
+
+        public string MonthCollectList(BillRecordRequestPayload payload)
+        {
+            try
+            {
+                string queryStr = string.Empty;
+                if (!string.IsNullOrEmpty(payload.Kw))
+                {
+                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%' or FPcName like '%{payload.Kw}%')";
+                }
+
+                if (payload.FHospitalID > 0)
+                {
+                    queryStr += $"AND  FHospitalID ='{payload.FHospitalID}'";
+                }
+                if (payload.FAreaID > 0)
+                {
+                    queryStr += $"AND  FAreaID ='{payload.FAreaID}'";
+                }
+                if (payload.FBedID > 0)
+                {
+                    queryStr += $"AND  FBedID ='{payload.FBedID}'";
+                }
+                if (payload.FManagerID > 0)
+                {
+                    queryStr += $"AND  FManagerID ='{payload.FManagerID}'";
+                }
+                if (payload.FPayWayID > 0)
+                {
+                    queryStr += $"AND  FRecWayID ='{payload.FPayWayID}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FBeginDate))
+                {
+                    queryStr += $"AND  FDate >='{payload.FBeginDate}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FEndDate))
+                {
+                    queryStr += $"AND  FDate <='{payload.FEndDate} 23:59:59 '";
+                }
+                using (_dbContext)
+                {
+                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select * from vMonthCollection where  1=1 {0}", queryStr));
+                    DataTable sourceForSummary = _dbContext.Database.SqlQuery(string.Format(@"SELECT ISNULL(SUM(t.FRecSum),0)FRecSum,-999 FRecWayID FROM(
+                        SELECT SUM(FRecSum)FRecSum,FRecWayID from vMonthCollection where  1 = 1    {0} group by FRecWayID
+                        ) AS t union all select SUM(FRecSum)FRecSum,FRecWayID from vMonthCollection where  1 = 1  {0} group by FRecWayID", queryStr));
+
+                    bool flag = source != null && source.Rows.Count > 0;
+                    return JsonConvert.SerializeObject(new
+                    {
+                        data = source,
+                        data_summary = sourceForSummary,
+                        state = flag ? "success" : "error",
+                        msg = flag ? "" : "没有查询到数据!"
+                    });
+                }
+            }
+            catch (Exception)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    data = new string[] { },
+                    state = "error",
+                    msg = "查询数据发生异常!",
+                });
+            }
+        }
+
+        [HttpPost]
+        public string exportExcel(BillRecordRequestPayload payload)
+        {
+            try
+            {
+                string queryStr = string.Empty;
+                if (!string.IsNullOrEmpty(payload.Kw))
+                {
+                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%')";
+                }
+
+                if (payload.FHospitalID > 0)
+                {
+                    queryStr += $"AND  FHospitalID ='{payload.FHospitalID}'";
+                }
+                if (payload.FBedID > 0)
+                {
+                    queryStr += $"AND  FBedID ='{payload.FBedID}'";
+                }
+                if (payload.FAreaID > 0)
+                {
+                    queryStr += $"AND  FAreaID ='{payload.FAreaID}'";
+                }
+                if (payload.FManagerID > 0)
+                {
+                    queryStr += $"AND  FManagerID ='{payload.FManagerID}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FBeginDate))
+                {
+                    queryStr += $"AND  FDate >='{payload.FBeginDate}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FEndDate))
+                {
+                    queryStr += $"AND  FDate <='{payload.FEndDate} 23:59:59' ";
+                }
+
+                var fileType = "xlsx";
+                var path = string.Format(@"{0}/excels", _hostingEnvironment.WebRootPath);
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+                var fileName = RandomHelper.GetRandomizer(10, true, false, true, false);
+                path = string.Format(@"{0}/{1}.{2}", path, fileName, fileType);
+
+                using (_dbContext)
+                {
+                    DataTable config = _dbContext.Database.SqlQuery(string.Format(@"SELECT * FROM dbo.DncViewConfig WHERE FViewId =1
+                AND ISNULL(FIsClose,0)=0 ORDER BY FNo"));
+                    DataTable configforSummary = _dbContext.Database.SqlQuery(string.Format(@"SELECT * FROM dbo.DncViewConfig WHERE FViewId =5
+                AND ISNULL(FIsClose,0)=0 ORDER BY FNo"));
+                    string columns = string.Empty;
+                    string columnsforSummary = string.Empty;
+                    if (config != null)
+                    {
+                        foreach (DataRow dr in config.Rows)
+                        {
+                            columns += $"{dr["FColName"]} as {dr["FLabelName"]},";
+                        }
+
+                        if (columns.EndsWith(","))
+                        {
+                            columns = columns.Substring(0, columns.Length - 1);
+                        }
+                    }
+                    else
+                    {
+                        columns = "*";
+                    }
+                    if (configforSummary != null)
+                    {
+                        foreach (DataRow dr in configforSummary.Rows)
+                        {
+                            columnsforSummary += $"{dr["FColName"]} as {dr["FLabelName"]},";
+                        }
+
+                        if (columnsforSummary.EndsWith(","))
+                        {
+                            columnsforSummary = columnsforSummary.Substring(0, columnsforSummary.Length - 1);
+                        }
+                    }
+                    else
+                    {
+                        columnsforSummary = "*";
+                    }
+                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select {0} from vBillRecord where 1=1 {1}", columns, queryStr));
+                    DataTable sourceSummary = _dbContext.Database.SqlQuery(string.Format(@"select {0} from vBillRecordSummary where 1=1 {1}", columnsforSummary, queryStr));
+                    if (source != null && source.Rows.Count > 0 && sourceSummary != null && sourceSummary.Rows.Count > 0)
+                    {
+                        string errorMsg = "";
+
+                        DataSet ds = new DataSet();
+                        source.TableName = "明细记录";
+                        sourceSummary.TableName = "汇总记录";
+                        ds.Tables.Add(source);
+                        ds.Tables.Add(sourceSummary);
+                        List<int> result = new ExcelHelper(path).DataTableToExcel(ds, true, ref errorMsg);
+                        if (result.Count > 0)
+                        {
+                            var fileBase64 = ExcelHelper.File2Base64(path);
+                            if (!string.IsNullOrEmpty(fileBase64))
+                            {
+                                return JsonConvert.SerializeObject(new
+                                {
+                                    state = "success",
+                                    msg = "",
+                                    data = new
+                                    {
+                                        filename = string.Format(@"{0}.{1}", fileName, fileType),
+                                        file = fileBase64
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                return JsonConvert.SerializeObject(new
+                                {
+                                    state = "error",
+                                    msg = "文件转化失败!"
+                                });
+                            }
+                        }
+                        else
+                        {
+                            return JsonConvert.SerializeObject(new
+                            {
+                                state = "error",
+                                msg = errorMsg
+                            });
+                        }
+                    }
+                    else
+                    {
+                        return JsonConvert.SerializeObject(new
+                        {
+                            state = "error",
+                            msg = "没有查询到数据!",
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    state = "error",
+                    msg = "导出数据发生异常!",
                 });
             }
         }
@@ -881,11 +965,11 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID", queryStr));
                 }
                 if (!string.IsNullOrEmpty(payload.FBeginDate))
                 {
-                    queryStr += $"AND  FBeginDate >='{payload.FBeginDate}'";
+                    queryStr += $"AND  FAccountEndDate >='{payload.FBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FEndDate))
                 {
-                    queryStr += $"AND  FEndDate <='{payload.FEndDate} 23:59:59 '";
+                    queryStr += $"AND  FAccountEndDate <='{payload.FEndDate} 23:59:59 '";
                 }
 
                 var fileType = "xlsx";
@@ -1150,11 +1234,11 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID", queryStr));
                 }
                 if (!string.IsNullOrEmpty(payload.FBeginDate))
                 {
-                    queryStr += $"AND  t2.FBeginDate >='{payload.FBeginDate}'";
+                    queryStr += $"AND  t2.FAccountEndDate >='{payload.FBeginDate}'";
                 }
                 if (!string.IsNullOrEmpty(payload.FEndDate))
                 {
-                    queryStr += $"AND  t2.FEndDate <='{payload.FEndDate} 23:59:59 '";
+                    queryStr += $"AND  t2.FAccountEndDate <='{payload.FEndDate} 23:59:59 '";
                 }
 
                 var fileType = "xlsx";
@@ -1188,7 +1272,24 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID", queryStr));
                         columns = "*";
                     }
 
-                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select {0} from (SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
+                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select {0} from (
+SELECT ISNULL(SUM(t.FHospitalMgrCost),0)FHospitalMgrCost,ISNULL(SUM(t.FCompanyMgrCost),0)FCompanyMgrCost,
+ISNULL(SUM(t.FPersonCost),0)FPersonCost,ISNULL(SUM(t.FHolidayCost),0)FHolidayCost,
+ISNULL(SUM(t.FTotalPersonCost),0)FTotalPersonCost,'' FHospitalName,'' FPcName,'合计'FPcCode,ISNULL(SUM(t.FDay),0)FDay,
+ISNULL(SUM(t.FCost),0)FCost,'' FPersonID FROM (SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
+                SUM(ISNULL(t2.FCompanyMgrCost, 0)) AS FCompanyMgrCost, SUM(ISNULL(t2.FPersonCost, 0)) 
+                AS FPersonCost, SUM(ISNULL(t2.FHolidayCost, 0)) AS FHolidayCost, 
+                SUM(ISNULL(t2.FTotalPersonCost, 0)) AS FTotalPersonCost, t3.Name AS FHospitalName, 
+                t4.Name AS FPcName, t4.Code AS FPcCode, SUM(ISNULL(t2.FDay, 0)) AS FDay, 
+                SUM(ISNULL(t2.FCost, 0)) AS FCost, t2.FPersonID
+FROM   dbo.t_Bill AS t1 LEFT OUTER JOIN
+                dbo.t_BillDetail AS t2 ON t1.FID = t2.FID LEFT OUTER JOIN
+                dbo.DncHospital AS t3 ON t1.FHospitalID = t3.Id LEFT OUTER JOIN
+                dbo.DncPc AS t4 ON t2.FPersonID = t4.Id WHERE 1=1  {1}
+GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID)
+ AS t  ) as t1
+union all
+select {0} from (SELECT  SUM(ISNULL(t2.FHospitalMgrCost, 0)) AS FHospitalMgrCost, 
                 SUM(ISNULL(t2.FCompanyMgrCost, 0)) AS FCompanyMgrCost, SUM(ISNULL(t2.FPersonCost, 0)) 
                 AS FPersonCost, SUM(ISNULL(t2.FHolidayCost, 0)) AS FHolidayCost, 
                 SUM(ISNULL(t2.FTotalPersonCost, 0)) AS FTotalPersonCost, t3.Name AS FHospitalName, 
@@ -1247,12 +1348,137 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID) as t", columns, queryStr));
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return JsonConvert.SerializeObject(new
                 {
                     state = "error",
                     msg = "导出数据发生异常!",
+                });
+            }
+        }
+
+        public string exportExcelForMonthCollect(BillRecordRequestPayload payload)
+        {
+            try
+            {
+                string queryStr = string.Empty;
+                if (!string.IsNullOrEmpty(payload.Kw))
+                {
+                    queryStr += $"AND (FOrderBillNo like '%{payload.Kw}%' or FClientTel like '%{payload.Kw}%'  or FClient like '%{payload.Kw}%')";
+                }
+
+                if (payload.FHospitalID > 0)
+                {
+                    queryStr += $"AND  FHospitalID ='{payload.FHospitalID}'";
+                }
+                if (payload.FAreaID > 0)
+                {
+                    queryStr += $"AND  FAreaID ='{payload.FAreaID}'";
+                }
+                if (payload.FBedID > 0)
+                {
+                    queryStr += $"AND  FBedID ='{payload.FBedID}'";
+                }
+                if (payload.FManagerID > 0)
+                {
+                    queryStr += $"AND  FManagerID ='{payload.FManagerID}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FBeginDate))
+                {
+                    queryStr += $"AND  FDate >='{payload.FBeginDate}'";
+                }
+                if (!string.IsNullOrEmpty(payload.FEndDate))
+                {
+                    queryStr += $"AND  FDate <='{payload.FEndDate} 23:59:59 '";
+                }
+                var fileType = "xlsx";
+                var path = string.Format(@"{0}/excels", _hostingEnvironment.WebRootPath);
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+                var fileName = RandomHelper.GetRandomizer(10, true, false, true, false);
+                path = string.Format(@"{0}/{1}.{2}", path, fileName, fileType);
+
+                using (_dbContext)
+                {
+                    DataTable config = _dbContext.Database.SqlQuery(string.Format(@"SELECT * FROM dbo.DncViewConfig WHERE FViewId =7
+                AND ISNULL(FIsClose,0)=0 ORDER BY FNo"));
+                    string columns = string.Empty;
+                    if (config != null)
+                    {
+                        foreach (DataRow dr in config.Rows)
+                        {
+                            columns += $"{dr["FColName"]} as {dr["FLabelName"]},";
+                        }
+
+                        if (columns.EndsWith(","))
+                        {
+                            columns = columns.Substring(0, columns.Length - 1);
+                        }
+                    }
+                    else
+                    {
+                        columns = "*";
+                    }
+
+                    DataTable source = _dbContext.Database.SqlQuery(string.Format(@"select {1} from vMonthCollection where  1=1 {0}", queryStr, columns));
+                    if (source != null && source.Rows.Count > 0)
+                    {
+                        string errorMsg = "";
+                        if (new ExcelHelper(path).DataTableToExcel(source, "每月收款", true, ref errorMsg) > 0)
+                        {
+                            // excel to  base64
+                            var fileBase64 = ExcelHelper.File2Base64(path);
+                            if (!string.IsNullOrEmpty(fileBase64))
+                            {
+                                return JsonConvert.SerializeObject(new
+                                {
+                                    state = "success",
+                                    msg = "",
+                                    data = new
+                                    {
+                                        filename = string.Format(@"{0}.{1}", fileName, fileType),
+                                        file = fileBase64
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                return JsonConvert.SerializeObject(new
+                                {
+                                    state = "error",
+                                    msg = "文件转化失败!"
+                                });
+                            }
+                        }
+                        else
+                        {
+                            return JsonConvert.SerializeObject(new
+                            {
+                                state = "error",
+                                msg = errorMsg
+                            });
+                        }
+                    }
+                    else
+                    {
+                        return JsonConvert.SerializeObject(new
+                        {
+                            state = "error",
+                            msg = "没有查询到数据!",
+                        });
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    data = new string[] { },
+                    state = "error",
+                    msg = "查询数据发生异常!",
                 });
             }
         }
@@ -1273,7 +1499,6 @@ GROUP BY  t3.Name, t4.Name, t4.Code, t2.FPersonID) as t", columns, queryStr));
                 return response;
             }
         }
-
 
         [HttpPost]
         public ResponseModel UpdateBillIsConfirm(CheckModel model)

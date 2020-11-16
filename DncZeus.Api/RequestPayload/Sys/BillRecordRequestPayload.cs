@@ -15,6 +15,7 @@ namespace DncZeus.Api.RequestPayload.Sys
         public int FAreaID { get; set; }
         public int FBedID { get; set; }
         public int FManagerID { get; set; }
+        public int FPayWayID { get; set; }
         /// <summary> 
         ///  
         /// </summary>
