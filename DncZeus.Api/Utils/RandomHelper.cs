@@ -1,11 +1,4 @@
-﻿
-
-
-
-
-
-
-using System;
+﻿using System;
 
 namespace DncZeus.Api.Utils
 {

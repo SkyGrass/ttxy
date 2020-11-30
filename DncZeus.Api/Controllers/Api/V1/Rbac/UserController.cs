@@ -7,6 +7,7 @@ using DncZeus.Api.Extensions.CustomException;
 using DncZeus.Api.Extensions.DataAccess;
 using DncZeus.Api.Models.Response;
 using DncZeus.Api.RequestPayload.Rbac.User;
+using DncZeus.Api.Utils;
 using DncZeus.Api.ViewModels.Rbac.DncUser;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -100,6 +101,7 @@ namespace DncZeus.Api.Controllers.Api.V1.Rbac
                 entity.CreatedOn = DateTime.Now;
                 entity.FGuid = Guid.NewGuid();
                 entity.Status = model.Status;
+                entity.Password = DEShelper.DESEncrypt((model.Password ?? "").Trim());
                 _dbContext.DncUser.Add(entity);
                 _dbContext.SaveChanges();
 
@@ -120,6 +122,7 @@ namespace DncZeus.Api.Controllers.Api.V1.Rbac
             using (_dbContext)
             {
                 var entity = _dbContext.DncUser.FirstOrDefault(x => x.FGuid == guid);
+                entity.Password = DEShelper.DESDecrypt((entity.Password ?? "").Trim());
                 var response = ResponseModelFactory.CreateInstance;
                 response.SetData(_mapper.Map<DncUser, UserEditViewModel>(entity));
                 return Ok(response);
@@ -155,7 +158,7 @@ namespace DncZeus.Api.Controllers.Api.V1.Rbac
                 entity.ModifiedByUserGuid = AuthContextService.CurrentUser.Guid;
                 entity.ModifiedByUserName = AuthContextService.CurrentUser.DisplayName;
                 entity.ModifiedOn = DateTime.Now;
-                entity.Password = model.Password;
+                entity.Password = DEShelper.DESEncrypt((model.Password ?? "").Trim());
                 entity.Status = model.Status;
                 entity.UserType = model.UserType;
                 entity.Description = model.Description;
